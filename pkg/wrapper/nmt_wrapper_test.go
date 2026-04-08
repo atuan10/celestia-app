@@ -6,13 +6,13 @@ import (
 	"sort"
 	"testing"
 
+	rsmt2d "github.com/DataAvailabilityLayerNovel/rlnc-rsmt2d"
 	"github.com/celestiaorg/celestia-app/v8/pkg/appconsts"
 	"github.com/celestiaorg/celestia-app/v8/pkg/wrapper"
 	"github.com/celestiaorg/celestia-app/v8/test/util/testfactory"
 	"github.com/celestiaorg/go-square/v4/share"
 	"github.com/celestiaorg/nmt"
 	nmtnamespace "github.com/celestiaorg/nmt/namespace"
-	"github.com/celestiaorg/rsmt2d"
 	"github.com/stretchr/testify/assert"
 )
 

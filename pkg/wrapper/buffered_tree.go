@@ -7,7 +7,7 @@ import (
 	"github.com/celestiaorg/celestia-app/v8/pkg/appconsts"
 	"github.com/celestiaorg/go-square/v4/share"
 	"github.com/celestiaorg/nmt"
-	"github.com/celestiaorg/rsmt2d"
+	rsmt2d "github.com/DataAvailabilityLayerNovel/rlnc-rsmt2d"
 )
 
 // TreePool provides a fixed-size pool of resizeableBufferTree instances.

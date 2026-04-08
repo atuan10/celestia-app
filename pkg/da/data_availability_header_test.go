@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	rsmt2d "github.com/DataAvailabilityLayerNovel/rlnc-rsmt2d"
 	"github.com/celestiaorg/celestia-app/v8/pkg/appconsts"
 	appconstsv5 "github.com/celestiaorg/celestia-app/v8/pkg/appconsts/v5"
 	"github.com/celestiaorg/celestia-app/v8/pkg/wrapper"
@@ -19,7 +20,6 @@ import (
 	squarev4 "github.com/celestiaorg/go-square/v4"
 	sh "github.com/celestiaorg/go-square/v4/share"
 	gotx "github.com/celestiaorg/go-square/v4/tx"
-	"github.com/celestiaorg/rsmt2d"
 	"github.com/cosmos/btcutil/bech32"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cosmostx "github.com/cosmos/cosmos-sdk/types/tx"
@@ -50,18 +50,17 @@ func TestNilDataAvailabilityHeaderHashDoesntCrash(t *testing.T) {
 //   - 2 row roots (one for each row of the extended square)
 //   - 2 column roots (one for each column of the extended square)
 //
-// 4. Compute hash: A binary merkle tree is built from the concatenated row and column roots
-// (rowRoots || columnRoots) to produce the final data availability header hash
+// 4. Compute hash: A binary merkle tree is built from all Kate column commitments
+// to produce the final data availability header hash.
 //
-// The expectedHash below (0x3d96b7d2...) represents the merkle root of the concatenated
-// row and column roots from a 2x2 extended data square containing one tail padding share.
+// The expectedHash below (0xbe61258b...) represents the merkle root of Kate
+// column commitments from a 2x2 extended data square containing one tail padding share.
 // This hash is deterministic and will always be the same for the minimum data availability header
 // since it represents the smallest possible valid data square in the Celestia network.
 func TestMinDataAvailabilityHeader(t *testing.T) {
 	dah := MinDataAvailabilityHeader()
-	// Expected hash generated from merkle root of (rowRoots || columnRoots)
-	// where the roots come from a 2x2 extended data square with one tail padding share
-	expectedHash := []byte{0x3d, 0x96, 0xb7, 0xd2, 0x38, 0xe7, 0xe0, 0x45, 0x6f, 0x6a, 0xf8, 0xe7, 0xcd, 0xf0, 0xa6, 0x7b, 0xd6, 0xcf, 0x9c, 0x20, 0x89, 0xec, 0xb5, 0x59, 0xc6, 0x59, 0xdc, 0xaa, 0x1f, 0x88, 0x3, 0x53}
+	// Expected hash generated from merkle root of all Kate column commitments.
+	expectedHash := []byte{0xbe, 0x61, 0x25, 0x8b, 0xd7, 0xc7, 0x75, 0x21, 0x8d, 0x70, 0x2c, 0x78, 0xfe, 0xe3, 0x5c, 0x2b, 0x2a, 0xf8, 0x34, 0x6e, 0x60, 0x93, 0x49, 0xaf, 0x35, 0x14, 0x3e, 0x29, 0x61, 0x9, 0x2a, 0x15}
 	require.Equal(t, expectedHash, dah.hash)
 	require.NoError(t, dah.ValidateBasic())
 }
@@ -117,13 +116,13 @@ func TestNewDataAvailabilityHeader(t *testing.T) {
 	tests := []test{
 		{
 			name:         "typical",
-			expectedHash: []byte{0xb5, 0x6e, 0x4d, 0x25, 0x1a, 0xc2, 0x66, 0xf4, 0xb9, 0x1c, 0xc5, 0x46, 0x4b, 0x3f, 0xc7, 0xef, 0xcb, 0xdc, 0x88, 0x80, 0x64, 0x64, 0x74, 0x96, 0xd1, 0x31, 0x33, 0xf0, 0xdc, 0x65, 0xac, 0x25},
+			expectedHash: []byte{0x34, 0x69, 0x18, 0x28, 0x75, 0x8c, 0xf, 0x8, 0x44, 0xc, 0xdb, 0x5f, 0x1d, 0x7e, 0xc4, 0xe4, 0xbd, 0xd5, 0x5d, 0xb, 0x2e, 0x72, 0x3, 0x64, 0x3d, 0xd1, 0xb7, 0x53, 0xed, 0x15, 0x59, 0xef},
 			squareSize:   2,
 			shares:       generateShares(2 * 2),
 		},
 		{
 			name:         "max square size",
-			expectedHash: []byte{0x8f, 0x7d, 0xd2, 0xfc, 0x5f, 0x70, 0xd9, 0xc3, 0xca, 0xc7, 0x7e, 0x81, 0x5e, 0x0, 0x9d, 0x69, 0x4c, 0xd6, 0xd2, 0x49, 0xe7, 0x62, 0xdb, 0xbb, 0xb1, 0x99, 0xb7, 0x17, 0x7d, 0x6a, 0xd3, 0x88},
+			expectedHash: []byte{0xcf, 0x51, 0x75, 0xba, 0xdc, 0x48, 0x61, 0xb0, 0x5c, 0xba, 0x2b, 0xdd, 0xa8, 0x7f, 0xe5, 0xbe, 0xfa, 0x94, 0x77, 0xb8, 0x14, 0xe7, 0x6, 0xaf, 0xc6, 0x91, 0x9e, 0x88, 0xbb, 0x52, 0x7c, 0x5e},
 			squareSize:   uint64(appconsts.SquareSizeUpperBound),
 			shares:       generateShares(appconsts.SquareSizeUpperBound * appconsts.SquareSizeUpperBound),
 		},
@@ -139,8 +138,7 @@ func TestNewDataAvailabilityHeader(t *testing.T) {
 				require.NoError(t, err)
 				got, err := NewDataAvailabilityHeader(eds)
 				require.NoError(t, err)
-				require.Equal(t, tt.squareSize*2, uint64(len(got.ColumnRoots)))
-				require.Equal(t, tt.squareSize*2, uint64(len(got.RowRoots)))
+				require.Equal(t, tt.squareSize*2, uint64(len(got.KateCommits)))
 				require.Equal(t, tt.expectedHash, got.hash)
 			}
 		})
@@ -253,22 +251,15 @@ func testDAHValidateBasic(t *testing.T, extendShares func([][]byte) (*rsmt2d.Ext
 
 	// make a mutant dah that has too many roots
 	var tooBigDah DataAvailabilityHeader
-	tooBigDah.ColumnRoots = make([][]byte, maxSize)
-	tooBigDah.RowRoots = make([][]byte, maxSize)
-	copy(tooBigDah.ColumnRoots, bigdah.ColumnRoots)
-	copy(tooBigDah.RowRoots, bigdah.RowRoots)
-	tooBigDah.ColumnRoots = append(tooBigDah.ColumnRoots, bytes.Repeat([]byte{1}, 32))
-	tooBigDah.RowRoots = append(tooBigDah.RowRoots, bytes.Repeat([]byte{1}, 32))
+	tooBigDah.KateCommits = make([][]byte, maxSize)
+	copy(tooBigDah.KateCommits, bigdah.KateCommits)
+	tooBigDah.KateCommits = append(tooBigDah.KateCommits, bytes.Repeat([]byte{1}, 32))
 	// make a mutant dah that has too few roots
 	var tooSmallDah DataAvailabilityHeader
-	tooSmallDah.ColumnRoots = [][]byte{bytes.Repeat([]byte{2}, 32)}
-	tooSmallDah.RowRoots = [][]byte{bytes.Repeat([]byte{2}, 32)}
+	tooSmallDah.KateCommits = [][]byte{bytes.Repeat([]byte{2}, 32)}
 	// use a bad hash
 	badHashDah := MinDataAvailabilityHeader()
 	badHashDah.hash = []byte{1, 2, 3, 4}
-	// dah with not equal number of roots
-	mismatchDah := MinDataAvailabilityHeader()
-	mismatchDah.ColumnRoots = append(mismatchDah.ColumnRoots, bytes.Repeat([]byte{2}, 32))
 
 	tests := []test{
 		{
@@ -296,12 +287,6 @@ func testDAHValidateBasic(t *testing.T, extendShares func([][]byte) (*rsmt2d.Ext
 			dah:       badHashDah,
 			expectErr: true,
 			errStr:    "wrong hash",
-		},
-		{
-			name:      "mismatched roots",
-			dah:       mismatchDah,
-			expectErr: true,
-			errStr:    "unequal number of row and column roots",
 		},
 	}
 
@@ -539,6 +524,62 @@ func TestConstructEDS_WithFibreTx(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestDAHComputationFlowLogs(t *testing.T) {
+	appVersion := appconsts.Version
+	maxSquareSize := -1
+
+	fibreTx := buildMsgPayForFibreTxBytes(t)
+	normalTx := bytes.Repeat([]byte{0xAB}, 180)
+	txs := [][]byte{normalTx, fibreTx}
+
+	t.Logf("[INPUT] appVersion=%d maxSquareSize=%d txCount=%d", appVersion, maxSquareSize, len(txs))
+	for i, tx := range txs {
+		prefixLen := 16
+		if len(tx) < prefixLen {
+			prefixLen = len(tx)
+		}
+		t.Logf("[INPUT] tx[%d] len=%d prefix=%s", i, len(tx), strings.ToUpper(hex.EncodeToString(tx[:prefixLen])))
+	}
+
+	eds, err := ConstructEDS(txs, appVersion, maxSquareSize)
+	require.NoError(t, err)
+	require.NotNil(t, eds)
+
+	flattened := eds.Flattened()
+	t.Logf("[EDS] width=%d originalSquareSize=%d flattenedCells=%d", eds.Width(), eds.Width()/2, len(flattened))
+
+	if kateCols, kateErr := eds.KateCols(); kateErr != nil {
+		t.Logf("[EDS] KateCols before DAH generation: unavailable (%v)", kateErr)
+	} else {
+		t.Logf("[EDS] KateCols before DAH generation: count=%d", len(kateCols))
+	}
+
+	dah, err := NewDataAvailabilityHeader(eds)
+	require.NoError(t, err)
+
+	if kateCols, kateErr := eds.KateCols(); kateErr != nil {
+		t.Fatalf("KateCols should be available after DAH generation: %v", kateErr)
+	} else {
+		t.Logf("[EDS] KateCols after DAH generation: count=%d", len(kateCols))
+	}
+
+	t.Logf("[DAH] kateCommits=%d squareSize=%d", len(dah.KateCommits), dah.SquareSize())
+	maxLogs := 3
+	if len(dah.KateCommits) < maxLogs {
+		maxLogs = len(dah.KateCommits)
+	}
+	for i := 0; i < maxLogs; i++ {
+		t.Logf("[DAH] kateCommits[%d]=%s", i, strings.ToUpper(hex.EncodeToString(dah.KateCommits[i])))
+	}
+
+	h := dah.Hash()
+	t.Logf("[DAH] hash=%s", strings.ToUpper(hex.EncodeToString(h)))
+
+	require.NoError(t, dah.ValidateBasic())
+	require.False(t, dah.IsZero())
+	require.Equal(t, int(eds.Width()/2), dah.SquareSize())
 }
 
 // buildMsgPayForFibreTxBytes constructs Cosmos SDK Tx proto bytes containing a

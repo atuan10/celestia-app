@@ -18,6 +18,7 @@ require (
 	cosmossdk.io/x/feegrant v0.1.1
 	cosmossdk.io/x/tx v0.13.8
 	cosmossdk.io/x/upgrade v0.1.4
+	github.com/DataAvailabilityLayerNovel/rlnc-rsmt2d v0.0.0-20260402020925-1a441ce0c2c1
 	github.com/aws/aws-sdk-go-v2 v1.41.4
 	github.com/aws/aws-sdk-go-v2/config v1.32.9
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.11

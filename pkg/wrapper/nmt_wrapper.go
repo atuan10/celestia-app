@@ -3,11 +3,11 @@ package wrapper
 import (
 	"fmt"
 
+	rsmt2d "github.com/DataAvailabilityLayerNovel/rlnc-rsmt2d"
 	"github.com/celestiaorg/celestia-app/v8/pkg/appconsts"
 	"github.com/celestiaorg/go-square/v4/share"
 	"github.com/celestiaorg/nmt"
 	"github.com/celestiaorg/nmt/namespace"
-	"github.com/celestiaorg/rsmt2d"
 )
 
 // Fulfills the rsmt2d.Tree interface and rsmt2d.TreeConstructorFn function
